@@ -1,9 +1,0 @@
-name = "shelf-scanner"
-main = "worker/index.ts"
-compatibility_date = "2024-01-01"
-
-[vars]
-# Add secrets via: wrangler secret put OPENAI_API_KEY
-
-[[build]]
-# Vite builds to dist/, Worker is deployed separately

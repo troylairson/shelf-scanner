@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Shelf Scanner",
+    "slug": "shelf-scanner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#0a0a0a",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0a"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.troylairson.shelfscanner"
+    },
+    "android": {
+      "package": "com.troylairson.shelfscanner",
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0a0a",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Shelf Scanner uses the camera to photograph shelves and read the titles on them."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Shelf Scanner reads shelf photos you pick so it can find titles in them."
+        }
+      ],
+      "expo-status-bar"
+    ]
+  }
+}
