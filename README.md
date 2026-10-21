@@ -24,7 +24,7 @@ Worker that forwards photos to Gemini so the API key never ships in the app.
 
 ## Run it in Expo Go
 
-You need Node 22+, and the **Expo Go** app (SDK 58) on your phone, on the same Wi‑Fi as your computer.
+You need Node 22+, and the **Expo Go** app (SDK 57 — the version in the App Store) on your phone, on the same Wi‑Fi as your computer.
 
 ```bash
 npm install

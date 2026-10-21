@@ -39,7 +39,8 @@
           "photosPermission": "Shelf Scanner reads shelf photos you pick so it can find titles in them."
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-font"
     ]
   }
 }
