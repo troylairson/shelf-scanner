@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, BackHandler, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, BackHandler, StyleSheet, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ThemeProvider, useTheme, PUNCH } from './src/theme'
+import { ThemeProvider, useTheme } from './src/theme'
 import { ScannerScreen } from './src/components/ScannerScreen'
 import { ResultsScreen } from './src/components/ResultsScreen'
 import { WantedScreen } from './src/components/WantedScreen'
-import { HistoryScreen, formatDate } from './src/components/HistoryScreen'
+import { HistoryScreen } from './src/components/HistoryScreen'
 import { BottomNav } from './src/components/BottomNav'
 import { useWantedList } from './src/hooks/useWantedList'
 import { useHistory } from './src/hooks/useHistory'
@@ -24,7 +24,7 @@ export default function App() {
 }
 
 function Main() {
-  const { colors } = useTheme()
+  const c = useTheme()
   const insets = useSafeAreaInsets()
   const [view, setView] = useState<AppView>('scanner')
   const [scanResult, setScanResult] = useState<ScanResult | null>(null)
@@ -63,28 +63,26 @@ function Main() {
     return () => sub.remove()
   }, [view, viewingRecord, navigate])
 
-  // Scanner is always dark (camera UI); other screens follow the theme
-  const darkChrome = view === 'scanner' || colors.name === 'dark'
-  const topColor = view === 'scanner' ? '#0a0a0a' : colors.bg
-
   return (
-    <View style={[styles.root, { backgroundColor: colors.bg }]}>
-      <StatusBar style={darkChrome ? 'light' : 'dark'} />
-      <View style={{ height: insets.top, backgroundColor: topColor }} />
+    <View style={[styles.root, { backgroundColor: c.bg }]}>
+      <StatusBar style={c.name === 'dark' ? 'light' : 'dark'} />
+      <View style={{ height: insets.top }} />
 
       <View style={styles.content}>
         {loading ? (
           <View style={styles.loading}>
-            <ActivityIndicator size="large" color={PUNCH} />
+            <ActivityIndicator size="large" color={c.accent} />
           </View>
         ) : (
           <>
-            {view === 'scanner' && <ScannerScreen onScanComplete={handleScanComplete} />}
+            {view === 'scanner' && <ScannerScreen wantedCount={items.length} onScanComplete={handleScanComplete} />}
             {view === 'results' && scanResult && (
               <ResultsScreen
                 result={scanResult}
                 wantedTitles={wantedTitles}
-                onAction={() => navigate('scanner')}
+                backLabel="Scan"
+                onBack={() => navigate('scanner')}
+                onScanAgain={() => navigate('scanner')}
                 onAddToWanted={addToWanted}
               />
             )}
@@ -100,20 +98,14 @@ function Main() {
               />
             )}
             {view === 'history' && viewingRecord && (
-              <View style={styles.content}>
-                <View style={[styles.subHeader, { borderBottomColor: colors.fg }]}>
-                  <Text style={[styles.subHeaderText, { color: colors.muted(0.5) }]}>
-                    {formatDate(viewingRecord.scannedAt)}
-                  </Text>
-                </View>
-                <ResultsScreen
-                  result={viewingRecord}
-                  wantedTitles={wantedTitles}
-                  actionLabel="Back to History"
-                  onAction={() => setViewingRecord(null)}
-                  onAddToWanted={addToWanted}
-                />
-              </View>
+              <ResultsScreen
+                result={viewingRecord}
+                wantedTitles={wantedTitles}
+                backLabel="History"
+                onBack={() => setViewingRecord(null)}
+                onScanAgain={() => navigate('scanner')}
+                onAddToWanted={addToWanted}
+              />
             )}
           </>
         )}
@@ -128,6 +120,4 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   content: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  subHeader: { paddingHorizontal: 24, paddingVertical: 12, borderBottomWidth: 2 },
-  subHeaderText: { fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 2 },
 })
