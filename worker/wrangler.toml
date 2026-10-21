@@ -1,0 +1,19 @@
+name = "shelf-scanner"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# Secrets (not committed):
+#   wrangler secret put GEMINI_API_KEY
+#   wrangler secret put APP_TOKEN        # optional, must match EXPO_PUBLIC_APP_TOKEN in the app
+#
+# For local dev, put the same keys in worker/.dev.vars, plus optionally:
+#   OLLAMA_URL=http://localhost:11434   # fallback when Gemini fails
+
+[vars]
+# GEMINI_MODEL = "gemini-3.8-flash"
+
+# Per-IP limit on scans so a leaked URL can't drain the Gemini quota
+[[ratelimits]]
+name = "SCAN_LIMITER"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }

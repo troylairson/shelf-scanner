@@ -1,84 +1,56 @@
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import type { AppView } from '../types'
+import { useTheme, PUNCH, INK_COLOR } from '../theme'
+
+type Tab = Exclude<AppView, 'results'>
+
+const TABS: { id: Tab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { id: 'scanner', label: 'SCAN', icon: 'scan' },
+  { id: 'wanted-list', label: 'WANTED', icon: 'list' },
+  { id: 'history', label: 'HISTORY', icon: 'time-outline' },
+]
 
 interface Props {
   view: AppView
-  onNavigate: (view: AppView) => void
-  onThemeToggle: () => void
-  theme: 'dark' | 'light'
+  onNavigate: (view: Tab) => void
+  bottomInset: number
 }
 
-const TABS: { id: AppView; label: string; icon: React.ReactNode }[] = [
-  {
-    id: 'scanner',
-    label: 'SCAN',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 9V6a1 1 0 011-1h3M3 15v3a1 1 0 001 1h3m9-16h3a1 1 0 011 1v3m0 9v3a1 1 0 01-1 1h-3" />
-        <circle cx="12" cy="12" r="3" />
-      </svg>
-    ),
-  },
-  {
-    id: 'wanted-list',
-    label: 'WANTED',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M5 5h14M5 9h14M5 13h8" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 16l2 2 4-4" />
-      </svg>
-    ),
-  },
-  {
-    id: 'history',
-    label: 'HISTORY',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-  },
-]
-
-export function BottomNav({ view, onNavigate, onThemeToggle, theme }: Props) {
+export function BottomNav({ view, onNavigate, bottomInset }: Props) {
+  const { colors, toggle } = useTheme()
   const activeId = view === 'results' ? 'scanner' : view
+  const dark = colors.name === 'dark'
 
   return (
-    <nav className="flex items-stretch border-t-2 border-ink dark:border-paper bg-paper dark:bg-ink">
+    <View style={[styles.nav, { borderTopColor: colors.fg, backgroundColor: colors.bg, paddingBottom: bottomInset }]}>
       {TABS.map((tab) => {
         const active = activeId === tab.id
+        const fg = active ? INK_COLOR : colors.fg
         return (
-          <button
+          <Pressable
             key={tab.id}
-            onClick={() => onNavigate(tab.id)}
-            className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 border-r-2 border-ink dark:border-paper transition-colors ${
-              active
-                ? 'bg-punch text-ink'
-                : 'text-ink dark:text-paper hover:bg-ink/5 dark:hover:bg-paper/5'
-            }`}
+            onPress={() => onNavigate(tab.id)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            style={[styles.tab, { borderRightColor: colors.fg }, active && { backgroundColor: PUNCH }]}
           >
-            {tab.icon}
-            <span className="text-[10px] font-black tracking-widest">{tab.label}</span>
-          </button>
+            <Ionicons name={tab.icon} size={20} color={fg} />
+            <Text style={[styles.label, { color: fg }]}>{tab.label}</Text>
+          </Pressable>
         )
       })}
-
-      <button
-        onClick={onThemeToggle}
-        className="px-4 flex flex-col items-center justify-center gap-1 text-ink dark:text-paper hover:bg-ink/5 dark:hover:bg-paper/5 transition-colors"
-        aria-label="Toggle theme"
-      >
-        {theme === 'dark' ? (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
-            <circle cx="12" cy="12" r="4" />
-            <path strokeLinecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-          </svg>
-        ) : (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
-          </svg>
-        )}
-        <span className="text-[10px] font-black tracking-widest">{theme === 'dark' ? 'LIGHT' : 'DARK'}</span>
-      </button>
-    </nav>
+      <Pressable onPress={toggle} style={styles.theme} accessibilityLabel="Toggle theme">
+        <Ionicons name={dark ? 'sunny-outline' : 'moon-outline'} size={20} color={colors.fg} />
+        <Text style={[styles.label, { color: colors.fg }]}>{dark ? 'LIGHT' : 'DARK'}</Text>
+      </Pressable>
+    </View>
   )
 }
+
+const styles = StyleSheet.create({
+  nav: { flexDirection: 'row', borderTopWidth: 2 },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, gap: 4, borderRightWidth: 2 },
+  theme: { paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  label: { fontSize: 10, fontWeight: '900', letterSpacing: 2 },
+})

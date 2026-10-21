@@ -1,12 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { WantedItem, MediaType } from '../types'
-import {
-  getWantedList,
-  saveWantedList,
-  addWantedItem,
-  removeWantedItem,
-  generateId,
-} from '../utils/storage'
+import { getWantedList, saveWantedList, generateId } from '../lib/storage'
 
 export function useWantedList() {
   const [items, setItems] = useState<WantedItem[]>([])
@@ -19,30 +13,35 @@ export function useWantedList() {
     })
   }, [])
 
-  const add = useCallback(async (title: string, type: MediaType = 'other') => {
-    const item: WantedItem = { id: generateId(), title: title.trim(), type, addedAt: Date.now() }
-    const updated = await addWantedItem(item)
-    setItems(updated)
-    return item
-  }, [])
-
-  const remove = useCallback(async (id: string) => {
-    const updated = await removeWantedItem(id)
-    setItems(updated)
-  }, [])
-
-  const importTitles = useCallback(async (titles: string[], type: MediaType = 'other') => {
+  // Adds titles not already on the list (case-insensitive); returns how many were new
+  const addMany = useCallback(async (titles: string[], type: MediaType = 'other') => {
     const list = await getWantedList()
-    const existingTitles = new Set(list.map((i) => i.title.toLowerCase()))
-    const newItems: WantedItem[] = titles
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0 && !existingTitles.has(t.toLowerCase()))
-      .map((title) => ({ id: generateId(), title, type, addedAt: Date.now() }))
-    const updated = [...list, ...newItems]
-    await saveWantedList(updated)
-    setItems(updated)
+    const existing = new Set(list.map((i) => i.title.toLowerCase()))
+    const newItems: WantedItem[] = []
+    for (const raw of titles) {
+      const title = raw.trim()
+      if (!title || existing.has(title.toLowerCase())) continue
+      existing.add(title.toLowerCase())
+      newItems.push({ id: generateId(), title, type, addedAt: Date.now() })
+    }
+    if (newItems.length) {
+      const updated = [...list, ...newItems]
+      await saveWantedList(updated)
+      setItems(updated)
+    }
     return newItems.length
   }, [])
 
-  return { items, loading, add, remove, importTitles }
+  const add = useCallback(
+    (title: string, type: MediaType = 'other') => addMany([title], type),
+    [addMany]
+  )
+
+  const remove = useCallback(async (id: string) => {
+    const updated = (await getWantedList()).filter((item) => item.id !== id)
+    await saveWantedList(updated)
+    setItems(updated)
+  }, [])
+
+  return { items, loading, add, addMany, remove }
 }
