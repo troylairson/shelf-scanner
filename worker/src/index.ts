@@ -45,23 +45,9 @@ async function handleScan(request: Request, env: Env): Promise<Response> {
     return jsonError('Server has no vision provider configured (set GEMINI_API_KEY)', 500)
   }
 
-  let formData: FormData
-  try {
-    formData = await request.formData()
-  } catch {
-    return jsonError('Invalid form data', 400)
-  }
-
-  const imageFile = formData.get('image')
-  if (!imageFile || typeof imageFile === 'string') {
-    return jsonError('No image provided', 400)
-  }
-  if (imageFile.size > MAX_IMAGE_BYTES) {
-    return jsonError('Image too large (max 5MB)', 413)
-  }
-
-  const base64 = bytesToBase64(new Uint8Array(await imageFile.arrayBuffer()))
-  const mimeType = imageFile.type || 'image/jpeg'
+  const upload = await readUpload(request)
+  if ('error' in upload) return jsonError(upload.error, upload.status)
+  const { base64, mimeType } = upload
 
   let geminiErr: ProviderError | null = null
   if (env.GEMINI_API_KEY) {
@@ -87,6 +73,49 @@ async function handleScan(request: Request, env: Env): Promise<Response> {
     return jsonError('The vision service is busy right now — try again in a moment.', 503)
   }
   return jsonError('Vision API error', 502)
+}
+
+type Upload = { base64: string; mimeType: string } | { error: string; status: number }
+
+// The app sends JSON { image: <base64>, mimeType }; multipart (field "image") is kept for curl testing
+async function readUpload(request: Request): Promise<Upload> {
+  const contentType = request.headers.get('content-type') ?? ''
+
+  if (contentType.includes('application/json')) {
+    let body: { image?: unknown; mimeType?: unknown }
+    try {
+      body = await request.json()
+    } catch {
+      return { error: 'Invalid JSON body', status: 400 }
+    }
+    if (typeof body.image !== 'string' || !body.image) {
+      return { error: 'No image provided', status: 400 }
+    }
+    // base64 is 4/3 the size of the bytes it encodes
+    if ((body.image.length * 3) / 4 > MAX_IMAGE_BYTES) {
+      return { error: 'Image too large (max 5MB)', status: 413 }
+    }
+    const mimeType = typeof body.mimeType === 'string' ? body.mimeType : 'image/jpeg'
+    return { base64: body.image, mimeType }
+  }
+
+  let formData: FormData
+  try {
+    formData = await request.formData()
+  } catch {
+    return { error: 'Invalid form data', status: 400 }
+  }
+  const imageFile = formData.get('image')
+  if (!imageFile || typeof imageFile === 'string') {
+    return { error: 'No image provided', status: 400 }
+  }
+  if (imageFile.size > MAX_IMAGE_BYTES) {
+    return { error: 'Image too large (max 5MB)', status: 413 }
+  }
+  return {
+    base64: bytesToBase64(new Uint8Array(await imageFile.arrayBuffer())),
+    mimeType: imageFile.type || 'image/jpeg',
+  }
 }
 
 function json(data: unknown, status = 200): Response {

@@ -14,24 +14,34 @@ function resolveApiUrl(): string | null {
 
 export const API_URL = resolveApiUrl()
 
-export async function scanImage(uri: string): Promise<string[]> {
+function describe(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
+}
+
+export async function scanImage(base64Jpeg: string): Promise<string[]> {
   if (!API_URL) {
     throw new Error('No scan server configured. Set EXPO_PUBLIC_API_URL.')
   }
 
-  const formData = new FormData()
-  // React Native's FormData accepts a file descriptor object in place of a Blob
-  formData.append('image', { uri, name: 'scan.jpg', type: 'image/jpeg' } as unknown as Blob)
-
-  const headers: Record<string, string> = {}
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   const token = process.env.EXPO_PUBLIC_APP_TOKEN
   if (token) headers['x-app-token'] = token
 
   let response: Response
   try {
-    response = await fetch(`${API_URL}/api/scan`, { method: 'POST', body: formData, headers })
-  } catch {
-    throw new Error(`Can't reach the scan server at ${API_URL}`)
+    response = await fetch(`${API_URL}/api/scan`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ image: base64Jpeg, mimeType: 'image/jpeg' }),
+    })
+  } catch (err) {
+    // Tell "server unreachable" apart from "upload failed" so errors are actionable
+    const reachable = await fetch(`${API_URL}/api/health`).then((r) => r.ok, () => false)
+    throw new Error(
+      reachable
+        ? `Upload to ${API_URL} failed: ${describe(err)}`
+        : `Can't reach the scan server at ${API_URL} (${describe(err)})`
+    )
   }
 
   const data = (await response.json().catch(() => null)) as { titles?: unknown; error?: string } | null
