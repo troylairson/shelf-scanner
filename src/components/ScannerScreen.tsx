@@ -6,18 +6,20 @@ import * as Haptics from 'expo-haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { prepareForUpload } from '../lib/image'
 import { scanImage } from '../lib/api'
-import { PUNCH, PAPER_COLOR, INK_COLOR, DANGER } from '../theme'
+import { useTheme } from '../theme'
+import { IconButton, LargeTitle } from './ui'
 
 interface Props {
+  wantedCount: number
   onScanComplete: (detectedTitles: string[]) => void
 }
 
-const paperAlpha = (a: number) => `rgba(245, 245, 240, ${a})`
-
-export function ScannerScreen({ onScanComplete }: Props) {
+export function ScannerScreen({ wantedCount, onScanComplete }: Props) {
+  const c = useTheme()
   const cameraRef = useRef<CameraView>(null)
   const [permission, requestPermission] = useCameraPermissions()
   const [cameraReady, setCameraReady] = useState(false)
+  const [flash, setFlash] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
 
@@ -54,161 +56,164 @@ export function ScannerScreen({ onScanComplete }: Props) {
   }
 
   const granted = permission?.granted ?? false
+  const canCapture = granted && cameraReady && !scanning
 
   return (
-    <View style={styles.root}>
-      <View style={styles.viewfinder}>
-        {granted ? (
-          <CameraView
-            ref={cameraRef}
-            style={StyleSheet.absoluteFill}
-            facing="back"
-            onCameraReady={() => setCameraReady(true)}
-          />
-        ) : (
-          <View style={styles.placeholder}>
-            {permission && !permission.canAskAgain ? (
-              <View style={styles.center}>
-                <Text style={styles.bigLabel}>NO CAMERA</Text>
-                <Text style={styles.subLabel}>Camera access is off. Enable it in Settings, or upload a photo below.</Text>
-                <Pressable onPress={() => Linking.openSettings()} style={styles.settingsButton}>
-                  <Text style={styles.settingsText}>OPEN SETTINGS</Text>
-                </Pressable>
-              </View>
-            ) : (
-              <View style={styles.center}>
-                <Pressable onPress={requestPermission} style={styles.startButton} accessibilityLabel="Start camera">
-                  <Ionicons name="camera-outline" size={40} color={INK_COLOR} />
-                </Pressable>
-                <Text style={styles.hint}>TAP TO START CAMERA</Text>
-              </View>
-            )}
-          </View>
-        )}
+    <View style={[styles.root, { backgroundColor: c.bg }]}>
+      <LargeTitle
+        title="Scan"
+        subtitle={
+          wantedCount > 0 ? (
+            <Text>
+              Checking against <Text style={{ color: c.text, fontWeight: '600' }}>{wantedCount} wanted title{wantedCount === 1 ? '' : 's'}</Text>
+            </Text>
+          ) : (
+            'Add titles on the Wanted tab to find matches'
+          )
+        }
+      />
 
-        {granted && !scanning && (
-          <View style={styles.guides} pointerEvents="none">
-            <View style={[styles.corner, { top: 0, left: 0, borderTopWidth: 2, borderLeftWidth: 2 }]} />
-            <View style={[styles.corner, { top: 0, right: 0, borderTopWidth: 2, borderRightWidth: 2 }]} />
-            <View style={[styles.corner, { bottom: 0, left: 0, borderBottomWidth: 2, borderLeftWidth: 2 }]} />
-            <View style={[styles.corner, { bottom: 0, right: 0, borderBottomWidth: 2, borderRightWidth: 2 }]} />
+      <View style={[styles.camera, { backgroundColor: c.camera }]}>
+        {granted ? (
+          <>
+            <CameraView
+              ref={cameraRef}
+              style={StyleSheet.absoluteFill}
+              facing="back"
+              flash={flash ? 'on' : 'off'}
+              onCameraReady={() => setCameraReady(true)}
+            />
+            {!scanning && (
+              <>
+                <View style={styles.hintWrap} pointerEvents="none">
+                  <Text style={styles.hint}>Fit one shelf in the frame</Text>
+                </View>
+                <View style={styles.frame} pointerEvents="none" />
+              </>
+            )}
+          </>
+        ) : (
+          <View style={styles.permission}>
+            <Ionicons name="camera-outline" size={36} color="rgba(255,255,255,0.85)" />
+            {permission && !permission.canAskAgain ? (
+              <>
+                <Text style={styles.permissionTitle}>Camera access is off</Text>
+                <Text style={styles.permissionBody}>Turn it on in Settings, or choose a photo instead.</Text>
+                <Pressable onPress={() => Linking.openSettings()} style={styles.permissionButton} accessibilityRole="button">
+                  <Text style={styles.permissionButtonText}>Open Settings</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Text style={styles.permissionTitle}>Point your camera at a shelf</Text>
+                <Text style={styles.permissionBody}>Shelf Scanner reads the titles on the spines.</Text>
+                <Pressable onPress={requestPermission} style={styles.permissionButton} accessibilityRole="button">
+                  <Text style={styles.permissionButtonText}>Turn on camera</Text>
+                </Pressable>
+              </>
+            )}
           </View>
         )}
 
         {scanning && (
           <View style={styles.overlay}>
-            <ActivityIndicator size="large" color={PUNCH} />
-            <Text style={styles.analyzing}>ANALYZING</Text>
-            <Text style={styles.hint}>READING TITLES</Text>
+            <View style={styles.overlayCard}>
+              <ActivityIndicator color="#111827" />
+              <Text style={styles.overlayText}>Reading titles…</Text>
+            </View>
           </View>
         )}
       </View>
 
       {scanError && (
-        <View style={styles.error}>
-          <Text style={styles.errorText}>{scanError}</Text>
+        <View style={[styles.error, { backgroundColor: c.dangerTint }]}>
+          <Ionicons name="alert-circle" size={20} color={c.danger} />
+          <Text style={[styles.errorText, { color: c.danger }]}>{scanError}</Text>
           <Pressable onPress={() => setScanError(null)} hitSlop={12} accessibilityLabel="Dismiss error">
-            <Text style={styles.errorClose}>×</Text>
+            <Ionicons name="close" size={20} color={c.danger} />
           </Pressable>
         </View>
       )}
 
       <View style={styles.controls}>
-        <Pressable
-          onPress={handlePick}
-          disabled={scanning}
-          style={[styles.uploadButton, scanning && styles.disabled]}
-          accessibilityLabel="Upload photo"
-        >
-          <Ionicons name="images-outline" size={22} color={PAPER_COLOR} />
-        </Pressable>
-
+        <IconButton icon="images-outline" label="Choose from photos" onPress={handlePick} disabled={scanning} />
         <Pressable
           onPress={handleCapture}
-          disabled={!granted || !cameraReady || scanning}
+          disabled={!canCapture}
+          accessibilityRole="button"
+          accessibilityLabel="Take photo"
           style={({ pressed }) => [
             styles.shutter,
-            (!granted || !cameraReady || scanning) && styles.disabled,
-            pressed && { transform: [{ scale: 0.95 }] },
+            { borderColor: c.text, backgroundColor: c.card, opacity: canCapture ? 1 : 0.4 },
+            pressed && { transform: [{ scale: 0.94 }] },
           ]}
-          accessibilityLabel="Capture"
+        >
+          <View style={[styles.shutterInner, { backgroundColor: c.text }]} />
+        </Pressable>
+        <IconButton
+          icon={flash ? 'flash' : 'flash-outline'}
+          label={flash ? 'Turn off flash' : 'Turn on flash'}
+          onPress={() => setFlash((f) => !f)}
+          disabled={!granted}
+          active={flash}
         />
-
-        <View style={{ width: 48 }} />
       </View>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000' },
-  viewfinder: { flex: 1, overflow: 'hidden' },
-  placeholder: { flex: 1, backgroundColor: INK_COLOR, alignItems: 'center', justifyContent: 'center' },
-  center: { alignItems: 'center', gap: 20, paddingHorizontal: 32 },
-  startButton: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: PAPER_COLOR,
-    borderWidth: 2,
-    borderColor: PAPER_COLOR,
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '4px 4px 0px rgba(255,255,255,0.15)',
+  root: { flex: 1 },
+  camera: { flex: 1, marginHorizontal: 16, borderRadius: 28, overflow: 'hidden' },
+  hintWrap: { position: 'absolute', top: 16, left: 0, right: 0, alignItems: 'center' },
+  hint: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    color: '#111827',
+    fontSize: 13,
+    fontWeight: '500',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    overflow: 'hidden',
   },
-  bigLabel: { color: PAPER_COLOR, fontWeight: '900', fontSize: 18 },
-  subLabel: { color: paperAlpha(0.5), fontSize: 14, textAlign: 'center' },
-  hint: { color: paperAlpha(0.4), fontSize: 12, fontWeight: '900', letterSpacing: 3 },
-  guides: { position: 'absolute', top: 32, left: 32, right: 32, bottom: 32 },
-  corner: { position: 'absolute', width: 24, height: 24, borderColor: paperAlpha(0.7) },
+  frame: {
+    position: 'absolute',
+    top: 64,
+    left: 22,
+    right: 22,
+    bottom: 28,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.55)',
+    borderRadius: 18,
+  },
+  permission: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 8 },
+  permissionTitle: { color: '#ffffff', fontSize: 17, fontWeight: '600', marginTop: 6, textAlign: 'center' },
+  permissionBody: { color: 'rgba(255,255,255,0.7)', fontSize: 15, textAlign: 'center' },
+  permissionButton: { marginTop: 10, backgroundColor: '#ffffff', borderRadius: 999, paddingHorizontal: 20, height: 44, justifyContent: 'center' },
+  permissionButtonText: { color: '#111827', fontSize: 15, fontWeight: '600' },
   overlay: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(10, 10, 10, 0.8)',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
   },
-  analyzing: { color: PAPER_COLOR, fontWeight: '900', fontSize: 24, marginTop: 12 },
-  error: {
-    backgroundColor: DANGER,
-    paddingHorizontal: 16,
+  overlayCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    paddingHorizontal: 18,
     paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    borderRadius: 999,
   },
-  errorText: { color: '#fff', fontWeight: '700', fontSize: 14, flex: 1 },
-  errorClose: { color: '#fff', fontWeight: '900', fontSize: 22, lineHeight: 22 },
-  controls: {
-    backgroundColor: INK_COLOR,
-    borderTopWidth: 2,
-    borderTopColor: paperAlpha(0.1),
-    paddingHorizontal: 32,
-    paddingVertical: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  uploadButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: paperAlpha(0.1),
-    borderWidth: 2,
-    borderColor: paperAlpha(0.2),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shutter: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: PAPER_COLOR,
-    borderWidth: 2,
-    borderColor: PAPER_COLOR,
-    boxShadow: '0px 0px 0px 4px rgba(255,255,255,0.15)',
-  },
-  disabled: { opacity: 0.4 },
-  settingsButton: { borderWidth: 2, borderColor: PAPER_COLOR, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
-  settingsText: { color: PAPER_COLOR, fontWeight: '900', fontSize: 12, letterSpacing: 1 },
+  overlayText: { color: '#111827', fontSize: 15, fontWeight: '600' },
+  error: { marginHorizontal: 16, marginTop: 12, borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  errorText: { flex: 1, fontSize: 14, fontWeight: '500' },
+  controls: { paddingHorizontal: 40, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  shutter: { width: 80, height: 80, borderRadius: 40, borderWidth: 4, alignItems: 'center', justifyContent: 'center' },
+  shutterInner: { width: 62, height: 62, borderRadius: 31 },
 })

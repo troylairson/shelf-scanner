@@ -1,72 +1,115 @@
 import type { ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
-import { useTheme, PUNCH, INK_COLOR, TYPE_COLORS } from '../theme'
+import { Ionicons } from '@expo/vector-icons'
+import { useTheme } from '../theme'
 import type { MediaType } from '../types'
 
-type Variant = 'solid' | 'punch' | 'outline'
-
-interface HardButtonProps {
-  label: string
-  onPress: () => void
-  variant?: Variant
-  small?: boolean
-  disabled?: boolean
-  style?: StyleProp<ViewStyle>
+export const TYPE_LABELS: Record<MediaType, string> = {
+  movie: 'Film',
+  tv: 'TV',
+  game: 'Game',
+  other: 'Other',
 }
 
-// Neo-brutalist button: thick border + hard offset shadow that "presses in" on tap
-export function HardButton({ label, onPress, variant = 'solid', small, disabled, style }: HardButtonProps) {
-  const { colors } = useTheme()
-  const bg = variant === 'punch' ? PUNCH : variant === 'solid' ? colors.fg : 'transparent'
-  const fg = variant === 'punch' ? INK_COLOR : variant === 'solid' ? colors.bg : colors.fg
+export function LargeTitle({ title, subtitle, right }: { title: string; subtitle?: ReactNode; right?: ReactNode }) {
+  const c = useTheme()
+  return (
+    <View style={styles.largeTitle}>
+      <View style={styles.titleRow}>
+        <Text accessibilityRole="header" style={[styles.titleText, { color: c.text }]}>{title}</Text>
+        {right}
+      </View>
+      {subtitle ? <Text style={[styles.subtitle, { color: c.textSecondary }]}>{subtitle}</Text> : null}
+    </View>
+  )
+}
 
+export function SectionHeader({ children }: { children: string }) {
+  const c = useTheme()
+  return <Text style={[styles.sectionHeader, { color: c.textSecondary }]}>{children.toUpperCase()}</Text>
+}
+
+// Rounded white card holding a list of rows (iOS "inset grouped" list)
+export function Group({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+  const c = useTheme()
+  return <View style={[styles.group, { backgroundColor: c.card }, style]}>{children}</View>
+}
+
+export function Separator() {
+  const c = useTheme()
+  return <View style={{ height: StyleSheet.hairlineWidth * 2, backgroundColor: c.separator, marginLeft: 16 }} />
+}
+
+export function PrimaryButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const c = useTheme()
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => [styles.primary, { backgroundColor: c.primary, opacity: pressed ? 0.85 : 1 }]}
+    >
+      <Text style={[styles.primaryText, { color: c.onPrimary }]}>{label}</Text>
+    </Pressable>
+  )
+}
+
+export function PillButton({ label, onPress, done, doneLabel }: { label: string; onPress: () => void; done?: boolean; doneLabel?: string }) {
+  const c = useTheme()
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={done}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: done }}
+      hitSlop={4}
+      style={({ pressed }) => [
+        styles.pill,
+        { backgroundColor: done ? 'transparent' : c.accentTint, opacity: pressed ? 0.7 : 1 },
+      ]}
+    >
+      {done && <Ionicons name="checkmark" size={15} color={c.textTertiary} />}
+      <Text style={[styles.pillText, { color: done ? c.textTertiary : c.accent }]}>{done ? doneLabel ?? label : label}</Text>
+    </Pressable>
+  )
+}
+
+export function IconButton({
+  icon,
+  label,
+  onPress,
+  disabled,
+  active,
+}: {
+  icon: keyof typeof Ionicons.glyphMap
+  label: string
+  onPress: () => void
+  disabled?: boolean
+  active?: boolean
+}) {
+  const c = useTheme()
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled, selected: active }}
       style={({ pressed }) => [
-        styles.button,
-        small ? styles.buttonSmall : styles.buttonLarge,
-        {
-          backgroundColor: bg,
-          borderColor: colors.fg,
-          boxShadow: pressed ? undefined : small ? colors.shadowSm : colors.shadow,
-          transform: pressed ? [{ translateX: 2 }, { translateY: 2 }] : undefined,
-          opacity: disabled ? 0.4 : 1,
-        },
-        style,
+        styles.iconButton,
+        { backgroundColor: active ? c.text : c.fill, opacity: disabled ? 0.4 : pressed ? 0.7 : 1 },
       ]}
     >
-      <Text style={[styles.buttonText, { color: fg, fontSize: small ? 12 : 17 }]}>{label}</Text>
+      <Ionicons name={icon} size={22} color={active ? c.card : c.text} />
     </Pressable>
   )
 }
 
-export const TYPE_LABELS: Record<MediaType, string> = {
-  movie: 'FILM',
-  tv: 'TV',
-  game: 'GAME',
-  other: 'OTHER',
-}
-
-export function TypeChip({ type }: { type: MediaType }) {
-  const { colors } = useTheme()
-  const bg = type === 'other' ? colors.fg : TYPE_COLORS[type]
-  const fg = type === 'other' ? colors.bg : '#ffffff'
+// iOS-style segmented control
+export function Segmented({ value, onChange }: { value: MediaType; onChange: (t: MediaType) => void }) {
+  const c = useTheme()
   return (
-    <View style={[styles.chip, { backgroundColor: bg, borderColor: colors.fg }]}>
-      <Text style={[styles.chipText, { color: fg }]}>{TYPE_LABELS[type]}</Text>
-    </View>
-  )
-}
-
-// Segmented control replacing the web <select>
-export function TypePicker({ value, onChange }: { value: MediaType; onChange: (t: MediaType) => void }) {
-  const { colors } = useTheme()
-  return (
-    <View style={[styles.segment, { borderColor: colors.fg }]}>
-      {(Object.keys(TYPE_LABELS) as MediaType[]).map((t, i) => {
+    <View style={[styles.segment, { backgroundColor: c.fill }]} accessibilityRole="radiogroup">
+      {(Object.keys(TYPE_LABELS) as MediaType[]).map((t) => {
         const active = t === value
         return (
           <Pressable
@@ -74,13 +117,9 @@ export function TypePicker({ value, onChange }: { value: MediaType; onChange: (t
             onPress={() => onChange(t)}
             accessibilityRole="radio"
             accessibilityState={{ selected: active }}
-            style={[
-              styles.segmentItem,
-              i > 0 && { borderLeftWidth: 2, borderLeftColor: colors.fg },
-              active && { backgroundColor: PUNCH },
-            ]}
+            style={[styles.segmentItem, active && { backgroundColor: c.card, boxShadow: '0px 1px 3px rgba(0,0,0,0.12)' }]}
           >
-            <Text style={[styles.chipText, { color: active ? INK_COLOR : colors.fg }]}>{TYPE_LABELS[t]}</Text>
+            <Text style={[styles.segmentText, { color: c.text, fontWeight: active ? '600' : '500' }]}>{TYPE_LABELS[t]}</Text>
           </Pressable>
         )
       })}
@@ -88,46 +127,42 @@ export function TypePicker({ value, onChange }: { value: MediaType; onChange: (t
   )
 }
 
-export function ScreenHeader({ title, right }: { title: string; right?: ReactNode }) {
-  const { colors } = useTheme()
-  return (
-    <View style={[styles.header, { borderBottomColor: colors.fg }]}>
-      <Text style={[styles.headerTitle, { color: colors.fg }]}>{title}</Text>
-      <View style={styles.headerRight}>{right}</View>
-    </View>
-  )
+export function TypeTag({ type }: { type: MediaType }) {
+  const c = useTheme()
+  return <Text style={[styles.typeTag, { color: c.typeColors[type] }]}>{TYPE_LABELS[type]}</Text>
 }
 
-export function EmptyState({ label }: { label: string }) {
-  const { colors } = useTheme()
+export function EmptyState({ icon, title, body }: { icon: keyof typeof Ionicons.glyphMap; title: string; body?: string }) {
+  const c = useTheme()
   return (
     <View style={styles.empty}>
-      <Text style={{ color: colors.muted(0.2), fontWeight: '900', fontSize: 48 }}>∅</Text>
-      <Text style={[styles.emptyText, { color: colors.muted(0.3) }]}>{label}</Text>
+      <View style={[styles.emptyIcon, { backgroundColor: c.fill }]}>
+        <Ionicons name={icon} size={28} color={c.textTertiary} />
+      </View>
+      <Text style={[styles.emptyTitle, { color: c.text }]}>{title}</Text>
+      {body ? <Text style={[styles.emptyBody, { color: c.textSecondary }]}>{body}</Text> : null}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  button: { borderWidth: 2, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  buttonLarge: { paddingVertical: 16, paddingHorizontal: 24 },
-  buttonSmall: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8 },
-  buttonText: { fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
-  chip: { borderWidth: 2, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 1 },
-  chipText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
-  segment: { flexDirection: 'row', borderWidth: 2, borderRadius: 10, overflow: 'hidden' },
-  segmentItem: { flex: 1, paddingVertical: 8, alignItems: 'center' },
-  header: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 18,
-    borderBottomWidth: 2,
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-  },
-  headerTitle: { fontSize: 36, fontWeight: '900', textTransform: 'uppercase', letterSpacing: -0.5 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  empty: { alignItems: 'center', gap: 12, paddingVertical: 64 },
-  emptyText: { fontWeight: '700', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 },
+  largeTitle: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14, gap: 4 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  titleText: { fontSize: 34, fontWeight: '700', letterSpacing: -0.5 },
+  subtitle: { fontSize: 15 },
+  sectionHeader: { fontSize: 13, fontWeight: '600', letterSpacing: 0.6, paddingLeft: 4, paddingBottom: 8 },
+  group: { borderRadius: 16, overflow: 'hidden' },
+  primary: { height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  primaryText: { fontSize: 17, fontWeight: '600' },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 4, height: 36, paddingHorizontal: 14, borderRadius: 999 },
+  pillText: { fontSize: 14, fontWeight: '600' },
+  iconButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  segment: { flexDirection: 'row', borderRadius: 10, padding: 2 },
+  segmentItem: { flex: 1, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  segmentText: { fontSize: 13 },
+  typeTag: { fontSize: 12, fontWeight: '600' },
+  empty: { alignItems: 'center', paddingVertical: 56, paddingHorizontal: 32, gap: 10 },
+  emptyIcon: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  emptyTitle: { fontSize: 17, fontWeight: '600' },
+  emptyBody: { fontSize: 15, textAlign: 'center', lineHeight: 21 },
 })

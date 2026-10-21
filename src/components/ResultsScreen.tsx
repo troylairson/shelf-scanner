@@ -1,122 +1,138 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import type { ScanResult } from '../types'
-import { useTheme, PUNCH, INK_COLOR } from '../theme'
-import { HardButton } from './ui'
+import { useTheme } from '../theme'
+import { EmptyState, Group, PillButton, PrimaryButton, SectionHeader, Separator, TYPE_LABELS } from './ui'
+import { formatDate } from '../lib/format'
 
 interface Props {
   result: ScanResult
   wantedTitles: Set<string>
-  actionLabel?: string
-  onAction: () => void
+  backLabel: string
+  onBack: () => void
+  onScanAgain: () => void
   onAddToWanted: (title: string) => void
 }
 
-export function ResultsScreen({ result, wantedTitles, actionLabel = 'Scan Again', onAction, onAddToWanted }: Props) {
-  const { colors } = useTheme()
+export function ResultsScreen({ result, wantedTitles, backLabel, onBack, onScanAgain, onAddToWanted }: Props) {
+  const c = useTheme()
   const { matches, unmatched, detectedTitles } = result
-  const hasMatches = matches.length > 0
-
-  if (detectedTitles.length === 0) {
-    return (
-      <View style={[styles.emptyRoot, { backgroundColor: colors.bg }]}>
-        <Text style={[styles.bigNumber, { color: colors.fg }]}>0</Text>
-        <View style={{ alignItems: 'center' }}>
-          <Text style={[styles.emptyTitle, { color: colors.fg }]}>No Titles Found</Text>
-          <Text style={[styles.emptyHint, { color: colors.muted(0.4) }]}>
-            Try a closer, well-lit photo with the spines facing the camera
-          </Text>
-        </View>
-        <HardButton label="Try Again" onPress={onAction} />
-      </View>
-    )
-  }
-
-  const headFg = hasMatches ? INK_COLOR : colors.fg
-  const headMuted = (a: number) => (hasMatches ? `rgba(10,10,10,${a})` : colors.muted(a))
+  const found = detectedTitles.length
+  const hit = matches.length > 0
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.bg }]}>
-      <View style={[styles.header, { borderBottomColor: colors.fg, backgroundColor: hasMatches ? PUNCH : colors.bg }]}>
-        <Text style={[styles.eyebrow, { color: headMuted(hasMatches ? 0.6 : 0.4) }]}>Scan Results</Text>
-        <View style={styles.countRow}>
-          <Text style={[styles.bigNumber, { color: hasMatches ? headFg : colors.muted(0.2) }]}>{matches.length}</Text>
-          <Text style={[styles.countLabel, { color: hasMatches ? headFg : colors.muted(0.4) }]}>
-            {matches.length === 1 ? 'Match' : 'Matches'}
-          </Text>
-        </View>
-        <Text style={[styles.detected, { color: headMuted(hasMatches ? 0.6 : 0.3) }]}>
-          {detectedTitles.length} title{detectedTitles.length !== 1 ? 's' : ''} detected
-        </Text>
+    <View style={[styles.root, { backgroundColor: c.bg }]}>
+      <View style={styles.nav}>
+        <Pressable onPress={onBack} hitSlop={10} accessibilityRole="button" style={styles.back}>
+          <Ionicons name="chevron-back" size={22} color={c.accent} />
+          <Text style={[styles.backText, { color: c.accent }]}>{backLabel}</Text>
+        </Pressable>
+        <Text style={[styles.time, { color: c.textSecondary }]}>{formatDate(result.scannedAt)}</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.list}>
-        {matches.map((match) => (
-          <View
-            key={match.wantedItem.id}
-            style={[styles.card, { borderColor: colors.fg, backgroundColor: colors.card, boxShadow: colors.shadow }]}
-          >
-            <View style={[styles.check, { borderColor: INK_COLOR }]}>
-              <Ionicons name="checkmark" size={16} color={INK_COLOR} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text numberOfLines={1} style={[styles.matchTitle, { color: colors.fg }]}>{match.wantedItem.title}</Text>
-              {match.detectedTitle.toLowerCase() !== match.wantedItem.title.toLowerCase() && (
-                <Text numberOfLines={1} style={[styles.small, { color: colors.muted(0.4) }]}>"{match.detectedTitle}"</Text>
-              )}
-            </View>
-            <Text style={[styles.score, { color: colors.muted(0.4) }]}>{Math.round((1 - match.score) * 100)}%</Text>
+      {found === 0 ? (
+        <View style={styles.flex}>
+          <EmptyState
+            icon="search-outline"
+            title="No titles found"
+            body="Try again closer to the shelf, in good light, with the spines facing the camera."
+          />
+          <View style={styles.footer}>
+            <PrimaryButton label="Try again" onPress={onScanAgain} />
           </View>
-        ))}
-
-        {unmatched.length > 0 && hasMatches && (
-          <Text style={[styles.section, { color: colors.muted(0.5) }]}>Not on your list</Text>
-        )}
-        {unmatched.map((title, i) => {
-          const added = wantedTitles.has(title.toLowerCase())
-          return (
-            <View key={`${title}-${i}`} style={[styles.row, { borderColor: colors.muted(0.1) }]}>
-              <View style={[styles.dot, { backgroundColor: colors.muted(0.4) }]} />
-              <Text numberOfLines={1} style={[styles.unmatched, { color: colors.muted(0.8) }]}>{title}</Text>
-              <HardButton
-                small
-                variant={added ? 'punch' : 'outline'}
-                label={added ? '✓ Wanted' : '+ Want'}
-                disabled={added}
-                onPress={() => onAddToWanted(title)}
-              />
+        </View>
+      ) : (
+        <>
+          <ScrollView contentContainerStyle={styles.scroll}>
+            <View style={[styles.summary, { backgroundColor: hit ? c.accentFill : c.card }]}>
+              <View style={[styles.summaryIcon, { backgroundColor: hit ? 'rgba(255,255,255,0.18)' : c.fill }]}>
+                <Ionicons name={hit ? 'checkmark' : 'remove'} size={30} color={hit ? '#ffffff' : c.textTertiary} />
+              </View>
+              <View style={styles.flex}>
+                <Text style={[styles.summaryTitle, { color: hit ? '#ffffff' : c.text }]}>
+                  {hit ? `${matches.length} on your list` : 'No matches'}
+                </Text>
+                <Text style={[styles.summaryBody, { color: hit ? 'rgba(255,255,255,0.92)' : c.textSecondary }]}>
+                  {found} title{found === 1 ? '' : 's'} found on this shelf
+                </Text>
+              </View>
             </View>
-          )
-        })}
-      </ScrollView>
 
-      <View style={[styles.footer, { borderTopColor: colors.fg }]}>
-        <HardButton label={actionLabel} onPress={onAction} />
-      </View>
+            {hit && (
+              <View>
+                <SectionHeader>Matches</SectionHeader>
+                <Group>
+                  {matches.map((m, i) => (
+                    <View key={m.wantedItem.id}>
+                      {i > 0 && <Separator />}
+                      <View style={styles.row}>
+                        <View style={[styles.check, { backgroundColor: c.accentTint }]}>
+                          <Ionicons name="checkmark" size={17} color={c.accent} />
+                        </View>
+                        <View style={styles.flex}>
+                          <Text numberOfLines={1} style={[styles.rowTitle, { color: c.text }]}>{m.wantedItem.title}</Text>
+                          <Text numberOfLines={1} style={[styles.rowSub, { color: c.textTertiary }]}>
+                            {TYPE_LABELS[m.wantedItem.type]}
+                            {m.detectedTitle.toLowerCase() !== m.wantedItem.title.toLowerCase() ? ` · seen as “${m.detectedTitle}”` : ''}
+                          </Text>
+                        </View>
+                        <Text style={[styles.score, { color: c.textSecondary }]}>{Math.round((1 - m.score) * 100)}%</Text>
+                      </View>
+                    </View>
+                  ))}
+                </Group>
+              </View>
+            )}
+
+            {unmatched.length > 0 && (
+              <View>
+                <SectionHeader>{hit ? 'Also on the shelf' : 'On the shelf'}</SectionHeader>
+                <Group>
+                  {unmatched.map((title, i) => (
+                    <View key={`${title}-${i}`}>
+                      {i > 0 && <Separator />}
+                      <View style={[styles.row, styles.rowCompact]}>
+                        <Text numberOfLines={1} style={[styles.flex, styles.plain, { color: c.text }]}>{title}</Text>
+                        <PillButton
+                          label="Add"
+                          doneLabel="Added"
+                          done={wantedTitles.has(title.toLowerCase())}
+                          onPress={() => onAddToWanted(title)}
+                        />
+                      </View>
+                    </View>
+                  ))}
+                </Group>
+              </View>
+            )}
+          </ScrollView>
+          <View style={styles.footer}>
+            <PrimaryButton label="Scan another shelf" onPress={onScanAgain} />
+          </View>
+        </>
+      )}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  emptyRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 24, paddingHorizontal: 32 },
-  emptyTitle: { fontWeight: '900', fontSize: 24, textTransform: 'uppercase' },
-  emptyHint: { fontSize: 14, marginTop: 8, textAlign: 'center' },
-  header: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 22, borderBottomWidth: 2 },
-  eyebrow: { fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 4 },
-  countRow: { flexDirection: 'row', alignItems: 'baseline', gap: 12 },
-  bigNumber: { fontSize: 72, fontWeight: '900', lineHeight: 76 },
-  countLabel: { fontSize: 24, fontWeight: '900', textTransform: 'uppercase' },
-  detected: { fontSize: 14, fontWeight: '700', marginTop: 4 },
-  list: { padding: 16, gap: 12 },
-  card: { borderWidth: 2, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  check: { width: 32, height: 32, borderRadius: 8, borderWidth: 2, backgroundColor: PUNCH, alignItems: 'center', justifyContent: 'center' },
-  matchTitle: { fontWeight: '900', fontSize: 16 },
-  small: { fontSize: 12, marginTop: 2 },
-  score: { fontSize: 12, fontWeight: '900' },
-  section: { fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 2, paddingHorizontal: 4, paddingTop: 8 },
-  row: { borderWidth: 2, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  unmatched: { flex: 1, fontSize: 14, fontWeight: '600' },
-  footer: { padding: 20, borderTopWidth: 2 },
+  flex: { flex: 1 },
+  nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8 },
+  back: { flexDirection: 'row', alignItems: 'center', minHeight: 44 },
+  backText: { fontSize: 17, fontWeight: '500' },
+  time: { fontSize: 13, paddingRight: 4 },
+  scroll: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 16, gap: 22 },
+  summary: { borderRadius: 22, padding: 20, flexDirection: 'row', alignItems: 'center', gap: 16 },
+  summaryIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  summaryTitle: { fontSize: 28, fontWeight: '700', letterSpacing: -0.4 },
+  summaryBody: { fontSize: 14, marginTop: 2 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 13 },
+  rowCompact: { paddingVertical: 8, paddingRight: 10 },
+  check: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  rowTitle: { fontSize: 16, fontWeight: '600' },
+  rowSub: { fontSize: 13, marginTop: 1 },
+  score: { fontSize: 13, fontWeight: '600' },
+  plain: { fontSize: 16 },
+  footer: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12 },
 })

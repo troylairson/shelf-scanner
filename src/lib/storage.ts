@@ -50,11 +50,3 @@ export async function deleteScanRecord(id: string): Promise<ScanRecord[]> {
 export function clearScanHistory(): Promise<void> {
   return AsyncStorage.removeItem(SCAN_HISTORY_KEY)
 }
-
-export function getStoredTheme(): Promise<string | null> {
-  return AsyncStorage.getItem('theme').catch(() => null)
-}
-
-export function setStoredTheme(theme: string): Promise<void> {
-  return AsyncStorage.setItem('theme', theme)
-}
