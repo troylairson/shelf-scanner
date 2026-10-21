@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
+import * as Haptics from 'expo-haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { prepareForUpload } from '../lib/image'
 import { scanImage } from '../lib/api'
@@ -35,6 +36,8 @@ export function ScannerScreen({ onScanComplete }: Props) {
 
   async function handleCapture() {
     if (!cameraRef.current || scanning) return
+    // Fire before the capture so the tap is acknowledged instantly; never let it block the photo
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {})
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.8, shutterSound: false })
       await scan(photo.uri, photo.width, photo.height)
