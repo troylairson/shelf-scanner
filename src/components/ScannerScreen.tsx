@@ -11,10 +11,11 @@ import { IconButton, LargeTitle } from './ui'
 
 interface Props {
   wantedCount: number
+  ownedCount: number
   onScanComplete: (detectedTitles: string[]) => void
 }
 
-export function ScannerScreen({ wantedCount, onScanComplete }: Props) {
+export function ScannerScreen({ wantedCount, ownedCount, onScanComplete }: Props) {
   const c = useTheme()
   const cameraRef = useRef<CameraView>(null)
   const [permission, requestPermission] = useCameraPermissions()
@@ -63,9 +64,21 @@ export function ScannerScreen({ wantedCount, onScanComplete }: Props) {
       <LargeTitle
         title="Scan"
         subtitle={
-          wantedCount > 0 ? (
+          wantedCount + ownedCount > 0 ? (
             <Text>
-              Checking against <Text style={{ color: c.text, fontWeight: '600' }}>{wantedCount} wanted title{wantedCount === 1 ? '' : 's'}</Text>
+              Checking against{' '}
+              {[
+                wantedCount ? `${wantedCount} wanted` : null,
+                ownedCount ? `${ownedCount} owned` : null,
+              ]
+                .filter(Boolean)
+                .map((part, i) => (
+                  <Text key={part}>
+                    {i > 0 ? ' and ' : ''}
+                    <Text style={{ color: c.text, fontWeight: '600' }}>{part}</Text>
+                  </Text>
+                ))}{' '}
+              title{wantedCount + ownedCount === 1 ? '' : 's'}
             </Text>
           ) : (
             'Add titles on the Wanted tab to find matches'

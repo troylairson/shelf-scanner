@@ -1,12 +1,15 @@
 # Shelf Scanner
 
 Point your phone at a shelf of DVDs, Blu-rays or games and find out which titles on your
-**wanted list** are on it. Built with Expo, so it runs in **Expo Go** with no native build.
+**wanted list** are on it, and which ones you **already own**. Built with Expo, so it runs in **Expo Go** with no native build.
 
 - **Scan** — take a photo (or pick one); a vision model reads the titles on the spines.
 - **Match** — titles are fuzzy-matched against your wanted list, ignoring noise like
   "Special Edition", "Blu-ray" or "(1999)".
 - **Wanted** — add titles one at a time or bulk-import a pasted list (one per line).
+  Tap **Got it** on a match when you buy it and it moves to your Library.
+- **Library** — what you already own. Scans flag owned titles so you don't buy them twice.
+  Fill it fast by scanning your own shelves and tapping **Add all to Library**.
 - **History** — the last 50 scans, stored on the device.
 
 All your data stays on the phone (AsyncStorage). The only server is a small Cloudflare

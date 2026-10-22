@@ -24,9 +24,18 @@ export function LargeTitle({ title, subtitle, right }: { title: string; subtitle
   )
 }
 
-export function SectionHeader({ children }: { children: string }) {
+export function SectionHeader({ children, action }: { children: string; action?: { label: string; onPress: () => void } }) {
   const c = useTheme()
-  return <Text style={[styles.sectionHeader, { color: c.textSecondary }]}>{children.toUpperCase()}</Text>
+  return (
+    <View style={styles.sectionRow}>
+      <Text accessibilityRole="header" style={[styles.sectionHeader, { color: c.textSecondary }]}>{children.toUpperCase()}</Text>
+      {action && (
+        <Pressable onPress={action.onPress} hitSlop={10} accessibilityRole="button">
+          <Text style={[styles.sectionAction, { color: c.accent }]}>{action.label}</Text>
+        </Pressable>
+      )}
+    </View>
+  )
 }
 
 // Rounded white card holding a list of rows (iOS "inset grouped" list)
@@ -53,7 +62,21 @@ export function PrimaryButton({ label, onPress }: { label: string; onPress: () =
   )
 }
 
-export function PillButton({ label, onPress, done, doneLabel }: { label: string; onPress: () => void; done?: boolean; doneLabel?: string }) {
+export function PillButton({
+  label,
+  onPress,
+  done,
+  doneLabel,
+  tone = 'accent',
+  accessibilityLabel,
+}: {
+  label: string
+  onPress: () => void
+  done?: boolean
+  doneLabel?: string
+  tone?: 'accent' | 'neutral'
+  accessibilityLabel?: string
+}) {
   const c = useTheme()
   return (
     <Pressable
@@ -61,14 +84,17 @@ export function PillButton({ label, onPress, done, doneLabel }: { label: string;
       disabled={done}
       accessibilityRole="button"
       accessibilityState={{ disabled: done }}
+      accessibilityLabel={accessibilityLabel}
       hitSlop={4}
       style={({ pressed }) => [
         styles.pill,
-        { backgroundColor: done ? 'transparent' : c.accentTint, opacity: pressed ? 0.7 : 1 },
+        { backgroundColor: done ? 'transparent' : tone === 'accent' ? c.accentTint : c.fill, opacity: pressed ? 0.7 : 1 },
       ]}
     >
       {done && <Ionicons name="checkmark" size={15} color={c.textTertiary} />}
-      <Text style={[styles.pillText, { color: done ? c.textTertiary : c.accent }]}>{done ? doneLabel ?? label : label}</Text>
+      <Text style={[styles.pillText, { color: done ? c.textTertiary : tone === 'accent' ? c.accent : c.text }]}>
+        {done ? doneLabel ?? label : label}
+      </Text>
     </Pressable>
   )
 }
@@ -150,11 +176,13 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   titleText: { fontSize: 34, fontWeight: '700', letterSpacing: -0.5 },
   subtitle: { fontSize: 15 },
-  sectionHeader: { fontSize: 13, fontWeight: '600', letterSpacing: 0.6, paddingLeft: 4, paddingBottom: 8 },
+  sectionRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 4, paddingBottom: 8 },
+  sectionHeader: { fontSize: 13, fontWeight: '600', letterSpacing: 0.6 },
+  sectionAction: { fontSize: 15, fontWeight: '500' },
   group: { borderRadius: 16, overflow: 'hidden' },
   primary: { height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   primaryText: { fontSize: 17, fontWeight: '600' },
-  pill: { flexDirection: 'row', alignItems: 'center', gap: 4, height: 36, paddingHorizontal: 14, borderRadius: 999 },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 4, height: 36, paddingHorizontal: 13, borderRadius: 999 },
   pillText: { fontSize: 14, fontWeight: '600' },
   iconButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   segment: { flexDirection: 'row', borderRadius: 10, padding: 2 },
