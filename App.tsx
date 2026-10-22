@@ -1,17 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ActivityIndicator, BackHandler, StyleSheet, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ThemeProvider, useTheme } from './src/theme'
 import { ScannerScreen } from './src/components/ScannerScreen'
 import { ResultsScreen } from './src/components/ResultsScreen'
-import { WantedScreen } from './src/components/WantedScreen'
+import { CollectionScreen } from './src/components/CollectionScreen'
 import { HistoryScreen } from './src/components/HistoryScreen'
 import { BottomNav } from './src/components/BottomNav'
-import { useWantedList } from './src/hooks/useWantedList'
+import { useCollection } from './src/hooks/useCollection'
 import { useHistory } from './src/hooks/useHistory'
 import { matchTitles } from './src/lib/titleMatcher'
-import type { AppView, ScanRecord, ScanResult } from './src/types'
+import type { AppView, ItemStatus, MediaType, ScanRecord, ScanResult } from './src/types'
 
 export default function App() {
   return (
@@ -29,10 +29,9 @@ function Main() {
   const [view, setView] = useState<AppView>('scanner')
   const [scanResult, setScanResult] = useState<ScanResult | null>(null)
   const [viewingRecord, setViewingRecord] = useState<ScanRecord | null>(null)
-  const { items, loading, add, addMany, remove } = useWantedList()
+  const collection = useCollection()
+  const { items, loading } = collection
   const history = useHistory()
-
-  const wantedTitles = useMemo(() => new Set(items.map((i) => i.title.toLowerCase())), [items])
 
   const handleScanComplete = useCallback(
     async (detectedTitles: string[]) => {
@@ -51,7 +50,18 @@ function Main() {
     setView(next)
   }, [])
 
-  const addToWanted = useCallback((title: string) => { add(title, 'other') }, [add])
+  const addFor = useCallback(
+    (status: ItemStatus) => (titles: string[], type: MediaType) => collection.addMany(titles, type, status),
+    [collection.addMany]
+  )
+
+  const resultsProps = {
+    byId: collection.byId,
+    byTitle: collection.byTitle,
+    onScanAgain: () => navigate('scanner'),
+    onAdd: collection.addMany,
+    onSetStatus: collection.setStatus,
+  }
 
   // Android hardware back: step out of sub-views before leaving the app
   useEffect(() => {
@@ -75,19 +85,33 @@ function Main() {
           </View>
         ) : (
           <>
-            {view === 'scanner' && <ScannerScreen wantedCount={items.length} onScanComplete={handleScanComplete} />}
-            {view === 'results' && scanResult && (
-              <ResultsScreen
-                result={scanResult}
-                wantedTitles={wantedTitles}
-                backLabel="Scan"
-                onBack={() => navigate('scanner')}
-                onScanAgain={() => navigate('scanner')}
-                onAddToWanted={addToWanted}
+            {view === 'scanner' && (
+              <ScannerScreen
+                wantedCount={collection.wanted.length}
+                ownedCount={collection.owned.length}
+                onScanComplete={handleScanComplete}
               />
             )}
+            {view === 'results' && scanResult && (
+              <ResultsScreen {...resultsProps} result={scanResult} backLabel="Scan" onBack={() => navigate('scanner')} />
+            )}
             {view === 'wanted-list' && (
-              <WantedScreen items={items} onAdd={add} onRemove={remove} onImport={addMany} />
+              <CollectionScreen
+                status="wanted"
+                items={collection.wanted}
+                onAdd={addFor('wanted')}
+                onRemove={collection.remove}
+                onMove={collection.setStatus}
+              />
+            )}
+            {view === 'library' && (
+              <CollectionScreen
+                status="owned"
+                items={collection.owned}
+                onAdd={addFor('owned')}
+                onRemove={collection.remove}
+                onMove={collection.setStatus}
+              />
             )}
             {view === 'history' && !viewingRecord && (
               <HistoryScreen
@@ -99,12 +123,10 @@ function Main() {
             )}
             {view === 'history' && viewingRecord && (
               <ResultsScreen
+                {...resultsProps}
                 result={viewingRecord}
-                wantedTitles={wantedTitles}
                 backLabel="History"
                 onBack={() => setViewingRecord(null)}
-                onScanAgain={() => navigate('scanner')}
-                onAddToWanted={addToWanted}
               />
             )}
           </>

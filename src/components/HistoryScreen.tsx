@@ -52,7 +52,7 @@ export function HistoryScreen({ records, onOpen, onRemove, onClear }: Props) {
       renderItem={({ item: record, index }) => {
         const first = index === 0
         const last = index === records.length - 1
-        const hits = record.matches.length
+        const hits = record.matches.filter((m) => m.item.status === 'wanted').length
         return (
           <View style={[styles.itemWrap, { backgroundColor: c.card }, first && styles.top, last && styles.bottom]}>
             {!first && <Separator />}
